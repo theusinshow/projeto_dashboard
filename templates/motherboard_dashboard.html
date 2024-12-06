@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Motherboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <header>
+        <h1>Dashboard de Motherboards</h1>
+    </header>
+
+    <!-- Quadrante Superior Esquerdo: Filtros e Tabela -->
+    <section class="quadrante quadrante-small">
+        <div class="filter-section" aria-labelledby="filters">
+            <h2 id="filters" class="visually-hidden">Filtros</h2>
+            <div class="row">
+                <div class="col-md-12">
+                    <label for="priceFilter" class="form-label">Filtrar por Preço Máximo (R$):</label>
+                    <input type="range" class="form-range" id="priceFilter" min="500" max="3000" step="100" oninput="updateFilters()">
+                    <span id="priceValue" class="form-label">Até R$ 3.000</span>
+                </div>
+                <div class="col-md-12 mt-3">
+                    <label for="manufacturerFilter" class="form-label">Filtrar por Fabricante:</label>
+                    <select id="manufacturerFilter" class="form-select" onchange="updateFilters()">
+                        <option value="all">Todos</option>
+                        <option value="AMD">AMD</option>
+                        <option value="Intel">Intel</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive mt-4">
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Preço (R$)</th>
+                        <th>Fabricante</th>
+                    </tr>
+                </thead>
+                <tbody id="motherboardTableBody" class="highlight-row">
+                    <!-- Conteúdo gerado dinamicamente -->
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Quadrantes para os Gráficos -->
+    <section class="quadrante quadrante-large">
+        <h4 class="text-center">Comparação de Preço das Motherboards</h4>
+        <canvas id="priceChart"></canvas>
+    </section>
+
+    <section class="quadrante quadrante-bottom-left">
+        <h4 class="text-center">Distribuição por Marca</h4>
+        <canvas id="brandChart"></canvas>
+    </section>
+
+    <!-- Seção de Script para JavaScript -->
+    <script>
+        const data = {{ data|tojson | safe }};
+        let filteredData = [...data];
+        let priceChart, brandChart;
+
+        function populateMotherboardTable() {
+            const tableBody = document.getElementById('motherboardTableBody');
+            tableBody.innerHTML = "";  // Limpar conteúdo anterior
+
+            filteredData.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.name}</td>
+                    <td>R$ ${item.price}</td>
+                    <td>${item.manufacturer}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function initializeCharts() {
+            const priceChartCtx = document.getElementById('priceChart').getContext('2d');
+            priceChart = new Chart(priceChartCtx, {
+                type: 'bar',
+                data: {
+                    labels: filteredData.map(item => item.name),
+                    datasets: [{
+                        label: 'Preço (R$)',
+                        data: filteredData.map(item => parseFloat(item.price)),
+                        backgroundColor: 'rgba(33, 150, 243, 0.6)',
+                        borderColor: 'rgba(33, 150, 243, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            const brandChartCtx = document.getElementById('brandChart').getContext('2d');
+            const brandData = filteredData.reduce((acc, item) => {
+                acc[item.manufacturer] = (acc[item.manufacturer] || 0) + 1;
+                return acc;
+            }, {});
+
+            brandChart = new Chart(brandChartCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(brandData),
+                    datasets: [{
+                        data: Object.values(brandData),
+                        backgroundColor: [
+                            'rgba(255, 152, 0, 0.8)',
+                            'rgba(76, 175, 80, 0.8)'
+                        ],
+                        borderColor: '#fff',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    cutout: '60%',
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: '#bf00ff'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateCharts() {
+            priceChart.data.labels = filteredData.map(item => item.name);
+            priceChart.data.datasets[0].data = filteredData.map(item => parseFloat(item.price));
+            priceChart.update();
+
+            const brandData = filteredData.reduce((acc, item) => {
+                acc[item.manufacturer] = (acc[item.manufacturer] || 0) + 1;
+                return acc;
+            }, {});
+            brandChart.data.labels = Object.keys(brandData);
+            brandChart.data.datasets[0].data = Object.values(brandData);
+            brandChart.update();
+        }
+
+        function updateFilters() {
+            const priceValue = document.getElementById('priceFilter').value;
+            const manufacturerValue = document.getElementById('manufacturerFilter').value;
+
+            document.getElementById('priceValue').textContent = `Até R$ ${priceValue}`;
+
+            filteredData = data.filter(item => {
+                return parseFloat(item.price) <= priceValue &&
+                    (manufacturerValue === 'all' || item.manufacturer === manufacturerValue);
+            });
+
+            populateMotherboardTable();
+            updateCharts();
+        }
+
+        window.onload = function () {
+            populateMotherboardTable();
+            initializeCharts();
+        };
+    </script>
+
+    <a href="javascript:history.back()" class="button-back">Voltar</a>
+</body>
+
+</html>
