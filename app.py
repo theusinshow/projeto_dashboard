@@ -2,13 +2,15 @@ from flask import Flask, render_template
 import pandas as pd
 import os
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=False)
-
+# Criação da aplicação Flask
 app = Flask(__name__)
 
 # Carregar o arquivo CSV
-data = pd.read_csv('data/hardware_data.csv')
+try:
+    data = pd.read_csv('data/hardware_data.csv')
+except FileNotFoundError:
+    print("Erro: Arquivo 'hardware_data.csv' não encontrado na pasta 'data'.")
+    data = pd.DataFrame()  # Cria um DataFrame vazio para evitar erros.
 
 @app.route('/')
 def index():
@@ -30,5 +32,6 @@ def motherboard_dashboard():
     motherboard_data = data[data['category'] == 'Motherboard']
     return render_template('motherboard_dashboard.html', data=motherboard_data.to_dict(orient='records'))
 
+# Executar a aplicação Flask
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
