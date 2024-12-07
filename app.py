@@ -1,5 +1,9 @@
 from flask import Flask, render_template
 import pandas as pd
+import os
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=False)
 
 app = Flask(__name__)
 
